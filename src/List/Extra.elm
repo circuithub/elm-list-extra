@@ -721,3 +721,23 @@ lift3 f la lb lc =
 lift4 : (a -> b -> c -> d -> e) -> List a -> List b -> List c -> List d -> List e
 lift4 f la lb lc ld =
   la `andThen` (\a -> lb `andThen` (\b -> lc `andThen` (\c -> ld `andThen` (\d -> [f a b c d]))))
+
+
+{-| Groups the elements of a list each times.
+
+  groupEach 3 [3,4,5,7,8,9] == [[3,4,5],[7,8,9]]
+  groupEach 3 [3,4,5,7,8] == [[3,4,5],[7,8]]
+-}
+groupEach : Int -> List a -> List (List a)
+groupEach times list =
+  let
+    f a ( cont, elems, group, listIter ) =
+      if cont == times || elems == 1 then
+        ( 1, elems - 1, [], List.reverse (a :: group) :: listIter )
+      else
+        ( cont + 1, elems - 1, a :: group, listIter )
+
+    ( _, _, _, grouped ) =
+      List.foldl f ( 1, List.length list, [], [] ) list
+  in
+    List.reverse grouped
