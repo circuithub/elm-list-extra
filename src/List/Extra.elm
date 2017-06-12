@@ -163,7 +163,7 @@ dropWhile predicate list =
     x::xs   -> if (predicate x) then dropWhile predicate xs
                else list
 
-{-| Drop _all_ duplicate elements from the list
+{-| Drop _all_ duplicated elements from the list (keeping 0 instances of each rather than 1 instance of each as `unique` does)
 -}
 dropDuplicates : List comparable -> List comparable
 dropDuplicates list =
