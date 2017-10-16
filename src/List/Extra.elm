@@ -28,6 +28,9 @@ module List.Extra
   , lift2
   , lift3
   , lift4
+  , mapUntil
+  , mapUntilTrue
+  , mapUntilSomething
   ) where
 {-| Convenience functions for working with List
 
@@ -57,6 +60,9 @@ module List.Extra
 
 # Lift functions onto multiple lists of arguments
 @docs lift2, lift3, lift4
+
+# Conditional maps
+@docs mapUntil, mapUntilTrue, mapUntilSomething
 -}
 
 import List exposing (..)
@@ -721,3 +727,84 @@ lift3 f la lb lc =
 lift4 : (a -> b -> c -> d -> e) -> List a -> List b -> List c -> List d -> List e
 lift4 f la lb lc ld =
   la `andThen` (\a -> lb `andThen` (\b -> lc `andThen` (\c -> ld `andThen` (\d -> [f a b c d]))))
+  
+  
+{-| Map a function on to the elements in a list, but stop at the first element
+where the result meets a given condition.  Return the result or `Nothing` if none
+of the list elements meet the condition.
+
+    modulo7 : Int -> Int
+    modulo7 n =
+      n % 7
+    mapUntil modulo7 (\m -> m > 5) [1, 9, 13, 3, 8] == Just 6
+    -- (modulo7 is not applied to last two elements)
+    mapUntil modulo7 (\m -> m > 2) [1, 2, 8] == Nothing
+
+-}
+mapUntil: (a -> b) -> (b -> Bool) -> List a -> Maybe b
+mapUntil function condition list =
+    case list of
+      [] ->
+        Nothing
+      [singleton] ->
+        let
+          result =
+            function singleton
+        in
+          if condition result then
+            Just result
+          else
+            Nothing
+      first::rest ->
+        let
+           firstResult =
+             function first
+        in
+          if condition firstResult then
+            Just firstResult
+          else
+            mapUntil function condition rest
+
+{-| Map a boolean function on to the elements in a list, stopping at the first
+element that evaluates to `True`.  Return `True` unless no element evaluated
+to `True` in which case return `False`.
+
+    divisibleByThree : Int -> Bool
+    divisibleByThree x =
+      x % 3 == 0
+    mapUntilTrue divisibleByThree [1, 7, 5, 6, 2, 9] == True
+    -- (divisibleByThree not called on last two elements)
+    mapUntilTrue (\m -> m > 100) [89, 76, 22] == False
+
+-}
+mapUntilTrue: (a -> Bool) -> List a -> Bool
+mapUntilTrue function list =
+  Maybe.withDefault False (mapUntil function (\x -> x) list)
+
+{-| Map a function that returns a `Maybe` value on to the elements in a list,
+stopping at the first element that doesn't evaluate to `Nothing`.  Return the
+result of the function on that element or `Nothing` if no element evaluated to
+anything other than `Nothing`.
+
+    sqrtIfExists : Float -> Maybe Float
+    sqrtIfExists x =
+      if x >= 0 then
+        Just (sqrt x)
+      else
+        Nothing
+    mapUntilSomething sqrtIfExists [-1.7, -2.9, 4.0, 7.0, -8.5] == Just 2.0
+    -- (sqrtIfExists not called on last two elements)
+    mapUntilSomething sqrtIfExists [-1.8, -9.7, -4.0] == Nothing
+
+-}
+mapUntilSomething: (a -> Maybe b) -> List a -> Maybe b
+mapUntilSomething function list =
+  let
+    result =
+      mapUntil function (\x -> x /= Nothing) list
+  in
+    case result of
+      Nothing ->
+        Nothing
+      Just val ->
+        val
